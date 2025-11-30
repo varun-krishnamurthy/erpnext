@@ -33,17 +33,17 @@ def install_postgres_compatibility_functions():
             CREATE OR REPLACE FUNCTION locate(needle text, haystack text) 
             RETURNS integer AS $$ SELECT POSITION(needle IN haystack); $$ LANGUAGE SQL IMMUTABLE;
             
-            -- CURDATE wrapper
+            -- CURDATE wrapper (STABLE because it returns current date)
             CREATE OR REPLACE FUNCTION curdate() 
-            RETURNS date AS $$ SELECT CURRENT_DATE; $$ LANGUAGE SQL IMMUTABLE;
+            RETURNS date AS $$ SELECT CURRENT_DATE; $$ LANGUAGE SQL STABLE;
             
-            -- DATE_SUB wrapper
+            -- DATE_SUB wrapper (STABLE for timezone-dependent behavior)
             CREATE OR REPLACE FUNCTION date_sub(d timestamp, i interval) 
-            RETURNS timestamp AS $$ SELECT d - i; $$ LANGUAGE SQL IMMUTABLE;
+            RETURNS timestamp AS $$ SELECT d - i; $$ LANGUAGE SQL STABLE;
             
-            -- DATE_ADD wrapper  
+            -- DATE_ADD wrapper (STABLE for timezone-dependent behavior)
             CREATE OR REPLACE FUNCTION date_add(d timestamp, i interval) 
-            RETURNS timestamp AS $$ SELECT d + i; $$ LANGUAGE SQL IMMUTABLE;
+            RETURNS timestamp AS $$ SELECT d + i; $$ LANGUAGE SQL STABLE;
         """)
         frappe.db.commit()
 ```
