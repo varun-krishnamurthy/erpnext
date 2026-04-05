@@ -68,6 +68,11 @@ class ReceivablePayableReport:
 			frappe.get_single_value("Accounts Settings", "receivable_payable_fetch_method")
 			or "Buffered Cursor"
 		)  # Fail Safe
+		
+		# Force DB-neutral method on PostgreSQL (Raw SQL uses MariaDB stored procedures)
+		if frappe.db.db_type == "postgres" and self.ple_fetch_method == "Raw SQL":
+			self.ple_fetch_method = "Buffered Cursor"
+		
 		self.advance_payment_doctypes = frappe.get_hooks(
 			"advance_payment_receivable_doctypes"
 		) + frappe.get_hooks("advance_payment_payable_doctypes")

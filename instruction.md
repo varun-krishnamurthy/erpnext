@@ -26,23 +26,23 @@ def install_postgres_compatibility_functions():
     if frappe.db.db_type == "postgres":
         frappe.db.sql("""
             -- IFNULL → COALESCE wrapper (fixes ~170 instances)
-            CREATE OR REPLACE FUNCTION ifnull(a anyelement, b anyelement) 
+            CREATE OR REPLACE FUNCTION ifnull(a anyelement, b anyelement)
             RETURNS anyelement AS $$ SELECT COALESCE(a, b); $$ LANGUAGE SQL IMMUTABLE;
-            
+
             -- LOCATE → POSITION wrapper (fixes ~10 instances)
-            CREATE OR REPLACE FUNCTION locate(needle text, haystack text) 
+            CREATE OR REPLACE FUNCTION locate(needle text, haystack text)
             RETURNS integer AS $$ SELECT POSITION(needle IN haystack); $$ LANGUAGE SQL IMMUTABLE;
-            
+
             -- CURDATE wrapper (STABLE because it returns current date)
-            CREATE OR REPLACE FUNCTION curdate() 
+            CREATE OR REPLACE FUNCTION curdate()
             RETURNS date AS $$ SELECT CURRENT_DATE; $$ LANGUAGE SQL STABLE;
-            
+
             -- DATE_SUB wrapper (STABLE for timezone-dependent behavior)
-            CREATE OR REPLACE FUNCTION date_sub(d timestamp, i interval) 
+            CREATE OR REPLACE FUNCTION date_sub(d timestamp, i interval)
             RETURNS timestamp AS $$ SELECT d - i; $$ LANGUAGE SQL STABLE;
-            
+
             -- DATE_ADD wrapper (STABLE for timezone-dependent behavior)
-            CREATE OR REPLACE FUNCTION date_add(d timestamp, i interval) 
+            CREATE OR REPLACE FUNCTION date_add(d timestamp, i interval)
             RETURNS timestamp AS $$ SELECT d + i; $$ LANGUAGE SQL STABLE;
         """)
         frappe.db.commit()
@@ -72,7 +72,7 @@ def __init__(self, filters=None):
         frappe.db.get_single_value("Accounts Settings", "receivable_payable_fetch_method")
         or "Buffered Cursor"
     )
-    
+
     # Force DB-neutral method on PostgreSQL (Raw SQL uses MariaDB stored procedures)
     if frappe.db.db_type == "postgres" and self.ple_fetch_method == "Raw SQL":
         self.ple_fetch_method = "Buffered Cursor"
@@ -115,12 +115,12 @@ bench --site test_site run-parallel-tests --app erpnext --use-orchestrator
 
 ### Test Files to Verify
 
-| Test File | What It Tests |
-|-----------|---------------|
-| `erpnext/accounts/report/accounts_receivable/test_accounts_receivable.py` | Accounts Receivable report functionality |
-| `erpnext/accounts/doctype/sales_invoice/test_sales_invoice.py` | Sales invoice (uses `ifnull()` in queries) |
-| `erpnext/accounts/doctype/payment_entry/test_payment_entry.py` | Payment entries |
-| `erpnext/controllers/tests/test_queries.py` | Search queries (uses `LOCATE()`) |
+| Test File                                                                 | What It Tests                              |
+| ------------------------------------------------------------------------- | ------------------------------------------ |
+| `erpnext/accounts/report/accounts_receivable/test_accounts_receivable.py` | Accounts Receivable report functionality   |
+| `erpnext/accounts/doctype/sales_invoice/test_sales_invoice.py`            | Sales invoice (uses `ifnull()` in queries) |
+| `erpnext/accounts/doctype/payment_entry/test_payment_entry.py`            | Payment entries                            |
+| `erpnext/controllers/tests/test_queries.py`                               | Search queries (uses `LOCATE()`)           |
 
 ### Manual Verification
 
@@ -172,9 +172,9 @@ Verify `db_type` is set to `postgres`.
 
 ## Files Changed Summary
 
-| File | Change | Lines |
-|------|--------|-------|
-| `erpnext/setup/install.py` | Add `install_postgres_compatibility_functions()` | ~20 |
-| `erpnext/accounts/report/accounts_receivable/accounts_receivable.py` | Add PostgreSQL fallback | ~3 |
+| File                                                                 | Change                                           | Lines |
+| -------------------------------------------------------------------- | ------------------------------------------------ | ----- |
+| `erpnext/setup/install.py`                                           | Add `install_postgres_compatibility_functions()` | ~20   |
+| `erpnext/accounts/report/accounts_receivable/accounts_receivable.py` | Add PostgreSQL fallback                          | ~3    |
 
 **Total: ~23 lines of code for full PostgreSQL compatibility**

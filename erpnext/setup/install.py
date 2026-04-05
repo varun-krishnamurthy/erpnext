@@ -17,6 +17,36 @@ default_mail_footer = """<div style="padding: 7px; text-align: right; color: #88
 	<a style="color: #888" href="http://frappe.io/erpnext">ERPNext</a></div>"""
 
 
+def install_postgres_compatibility_functions():
+	"""
+	Install MariaDB compatibility functions for PostgreSQL sites.
+	These functions allow MariaDB SQL syntax to work on PostgreSQL.
+	"""
+	if frappe.db.db_type == "postgres":
+		frappe.db.sql("""
+			-- IFNULL → COALESCE wrapper (fixes ~170 instances)
+			CREATE OR REPLACE FUNCTION ifnull(a anyelement, b anyelement) 
+			RETURNS anyelement AS $$ SELECT COALESCE(a, b); $$ LANGUAGE SQL IMMUTABLE;
+			
+			-- LOCATE → POSITION wrapper (fixes ~10 instances)
+			CREATE OR REPLACE FUNCTION locate(needle text, haystack text) 
+			RETURNS integer AS $$ SELECT POSITION(needle IN haystack); $$ LANGUAGE SQL IMMUTABLE;
+			
+			-- CURDATE wrapper (STABLE because it returns current date)
+			CREATE OR REPLACE FUNCTION curdate() 
+			RETURNS date AS $$ SELECT CURRENT_DATE; $$ LANGUAGE SQL STABLE;
+			
+			-- DATE_SUB wrapper (STABLE for timezone-dependent behavior)
+			CREATE OR REPLACE FUNCTION date_sub(d timestamp, i interval) 
+			RETURNS timestamp AS $$ SELECT d - i; $$ LANGUAGE SQL STABLE;
+			
+			-- DATE_ADD wrapper (STABLE for timezone-dependent behavior)
+			CREATE OR REPLACE FUNCTION date_add(d timestamp, i interval) 
+			RETURNS timestamp AS $$ SELECT d + i; $$ LANGUAGE SQL STABLE;
+		""")
+		frappe.db.commit()
+
+
 def after_install():
 	if not frappe.db.exists("Role", "Analytics"):
 		frappe.get_doc({"doctype": "Role", "role_name": "Analytics"}).insert()
@@ -36,6 +66,7 @@ def after_install():
 	make_default_operations()
 	update_pegged_currencies()
 	create_letter_head()
+	install_postgres_compatibility_functions()
 	frappe.db.commit()
 
 

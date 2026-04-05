@@ -20,7 +20,31 @@ import re
 import sys
 import warnings
 
-from frappe.deprecation_dumpster import Color, _deprecated, colorize
+try:
+	from frappe.deprecation_dumpster import Color, _deprecated, colorize
+except ImportError:
+	# Fallback for older Frappe versions or when deprecation_dumpster is not available
+	from frappe.utils.deprecations import deprecated as _deprecated
+
+	# Define Color enum if not available
+	try:
+		from enum import Enum
+
+		class Color(Enum):
+			RED = '\033[91m'
+			YELLOW = '\033[93m'
+			RESET = '\033[0m'
+	except:
+		class Color:
+			RED = '\033[91m'
+			YELLOW = '\033[93m'
+			RESET = '\033[0m'
+
+	def colorize(text, color):
+		"""Simple colorize function fallback"""
+		if hasattr(color, 'value'):
+			return f"{color.value}{text}{Color.RESET.value if hasattr(Color.RESET, 'value') else Color.RESET}"
+		return f"{color}{text}{Color.RESET}"
 
 
 # we use Warning because DeprecationWarning has python default filters which would exclude them from showing
@@ -87,14 +111,21 @@ def deprecated(original: str, marked: str, graduation: str, msg: str, stacklevel
 	def decorator(func):
 		# Get the filename of the caller
 		func.__name__ = original
-		wrapper = _deprecated(
+		deprecation_msg = (
 			colorize(f"It was marked on {marked} for removal from {graduation} with note: ", Color.RED)
-			+ colorize(f"{msg}", Color.YELLOW),
-			category=__get_deprecation_class(graduation),
-			stacklevel=stacklevel,
+			+ colorize(f"{msg}", Color.YELLOW)
 		)
 
-		return functools.update_wrapper(wrapper, func)(func)
+		# Try to use category if supported, otherwise just use the message
+		try:
+			return _deprecated(
+				deprecation_msg,
+				category=__get_deprecation_class(graduation),
+				stacklevel=stacklevel,
+			)(func)
+		except TypeError:
+			# Fallback if category is not supported
+			return _deprecated(deprecation_msg)(func)
 
 	return decorator
 
@@ -120,7 +151,7 @@ def deprecation_warning(marked: str, graduation: str, msg: str):
 	)
 
 
-### Party starts here
+# Party starts here
 @deprecated(
 	"erpnext.controllers.taxes_and_totals.get_itemised_taxable_amount",
 	"2024-11-07",

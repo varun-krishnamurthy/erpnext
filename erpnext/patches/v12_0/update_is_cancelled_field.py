@@ -20,13 +20,15 @@ def execute():
 			f"""
 				UPDATE `tab{doctype}`
 				SET is_cancelled = 0
-				where is_cancelled in ('', 'No') or is_cancelled is NULL"""
+				WHERE COALESCE(is_cancelled::text, '') IN ('', 'No', '0')
+			"""
 		)
 		frappe.db.sql(
 			f"""
 				UPDATE `tab{doctype}`
 				SET is_cancelled = 1
-				where is_cancelled = 'Yes'"""
+				WHERE COALESCE(is_cancelled::text, '') IN ('Yes', '1')
+			"""
 		)
 
 		frappe.reload_doc(module, "doctype", frappe.scrub(doctype))
